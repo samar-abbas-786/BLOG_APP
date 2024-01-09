@@ -1,7 +1,5 @@
-const { error } = require("console");
-const JWT = require("jsonwebtoken");
-const { randomBytes, createHash, createHmac } = require("crypto");
 const { Schema, model } = require("mongoose");
+const { randomBytes, createHmac } = require("crypto");
 const { createUserToken } = require("../services/authentication");
 
 const userSchema = new Schema(
@@ -50,7 +48,7 @@ userSchema.pre("save", function (next) {
 });
 
 userSchema.static(
-  "matchePasswordandGenerateToken",
+  "matchPasswordAndGenerateToken",
   async function (email, password) {
     const user = await this.findOne({ email });
     if (!user) {
@@ -65,10 +63,8 @@ userSchema.static(
     if (hashPassword !== userProvidedHash)
       throw new Error("Incorrect Password");
 
-    // const token = createUserToken(user);
-    // return token;
-
-    return { ...user, password: undefined, salt: undefined };
+    const token = createUserToken(user);
+    return token;
   }
 );
 
