@@ -1,6 +1,8 @@
 const { error } = require("console");
+const JWT = require("jsonwebtoken");
 const { randomBytes, createHash, createHmac } = require("crypto");
 const { Schema, model } = require("mongoose");
+const { createUserToken } = require("../services/authentication");
 
 const userSchema = new Schema(
   {
@@ -20,7 +22,7 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
-    profileImage: {
+    profileImageURL: {
       type: String,
       default: "/images/userImage.png",
     },
@@ -47,21 +49,28 @@ userSchema.pre("save", function (next) {
   next();
 });
 
-userSchema.static("matchePassword", async function (email, password) {
-  const user = await this.findOne({ email });
-  if (!user) {
-    throw new Error("User Not Found");
+userSchema.static(
+  "matchePasswordandGenerateToken",
+  async function (email, password) {
+    const user = await this.findOne({ email });
+    if (!user) {
+      throw new Error("User Not Found");
+    }
+    const salt = user.salt;
+    const hashPassword = user.password;
+
+    const userProvidedHash = createHmac("sha256", salt)
+      .update(password)
+      .digest("hex");
+    if (hashPassword !== userProvidedHash)
+      throw new Error("Incorrect Password");
+
+    // const token = createUserToken(user);
+    // return token;
+
+    return { ...user, password: undefined, salt: undefined };
   }
-  const salt = user.salt;
-  const hashPassword = user.password;
-
-  const userProvidedHash = createHmac("sha256", salt)
-    .update(password)
-    .digest("hex");
-  if (hashPassword !== userProvidedHash) throw new Error("Incorrect Password");
-
-  return { ...user, password: undefined, salt: undefined };
-});
+);
 
 const User = model("User", userSchema);
 module.exports = User;
